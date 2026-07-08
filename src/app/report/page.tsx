@@ -1,16 +1,52 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 export default function SOSReport() {
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!location || !description) {
+      setStatus({ type: 'error', text: "Please provide both location and description." });
+      return;
+    }
+
+    setLoading(true);
+    setStatus(null);
+
+    // Insert the data into our new Supabase table
+    const { error } = await supabase
+      .from('sos_reports')
+      .insert([
+        { location: location, description: description }
+      ]);
+
+    if (error) {
+      setStatus({ type: 'error', text: "Failed to dispatch SOS: " + error.message });
+    } else {
+      setStatus({ type: 'success', text: "SOS DISPATCHED SUCCESSFULLY. Help is on the way." });
+      // Clear the form on success
+      setLocation("");
+      setDescription("");
+    }
+    
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center py-12 px-4 relative">
-      
-      {/* Background Warning Banner */}
       <div className="absolute top-0 w-full bg-resq-red text-white text-center py-2 text-xs font-bold uppercase tracking-widest z-0">
         Official ResQAI Emergency Reporting Portal
       </div>
 
       <div className="relative z-10 w-full max-w-2xl mt-8">
-        {/* Header / Language Selector */}
         <div className="flex justify-between items-center mb-6">
           <Link href="/" className="text-sm font-bold text-gray-500 hover:text-resq-dark transition">
             ← Back to Home
@@ -22,7 +58,6 @@ export default function SOSReport() {
           </div>
         </div>
 
-        {/* Main Form Card */}
         <div className="bg-white/80 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-xl p-8 flex flex-col gap-8">
           
           <div className="text-center">
@@ -30,9 +65,14 @@ export default function SOSReport() {
             <p className="text-gray-500 text-sm">Please provide accurate details. Our AI will automatically prioritize your request.</p>
           </div>
 
-          <form className="flex flex-col gap-6">
+          {status && (
+            <div className={`p-4 rounded-xl text-center font-bold text-sm ${status.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200 animate-pulse'}`}>
+              {status.text}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             
-            {/* Step 1: Location */}
             <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
               <label className="block text-sm font-bold text-resq-dark mb-3 flex items-center gap-2">
                 <span className="w-6 h-6 bg-resq-dark text-white rounded-full flex items-center justify-center text-xs">1</span>
@@ -41,17 +81,15 @@ export default function SOSReport() {
               <div className="flex gap-3">
                 <input 
                   type="text" 
-                  placeholder="Searching for GPS signal..." 
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="E.g., 45 Galle Road, Colombo 03" 
                   className="flex-1 bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-resq-red transition"
-                  disabled
+                  disabled={loading}
                 />
-                <button type="button" className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-bold text-sm hover:bg-gray-300 transition">
-                  📍 Locate Me
-                </button>
               </div>
             </div>
 
-            {/* Step 2: Details */}
             <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
               <label className="block text-sm font-bold text-resq-dark mb-3 flex items-center gap-2">
                 <span className="w-6 h-6 bg-resq-dark text-white rounded-full flex items-center justify-center text-xs">2</span>
@@ -59,33 +97,21 @@ export default function SOSReport() {
               </label>
               <textarea 
                 rows={4}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="E.g., Two-vehicle collision, someone is trapped..." 
                 className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-resq-red transition resize-none"
+                disabled={loading}
               ></textarea>
             </div>
 
-            {/* Step 3: Media Upload */}
-            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-              <label className="block text-sm font-bold text-resq-dark mb-3 flex items-center gap-2">
-                <span className="w-6 h-6 bg-resq-dark text-white rounded-full flex items-center justify-center text-xs">3</span>
-                Upload Photos/Audio (Optional)
-              </label>
-              <div className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center bg-white hover:bg-gray-50 transition cursor-pointer">
-                <span className="text-2xl mb-2">📸</span>
-                <span className="text-sm font-semibold text-gray-500">Tap to upload images or voice notes</span>
-              </div>
-            </div>
-
-            {/* Submit */}
             <button 
-              type="button" 
-              className="w-full bg-resq-red text-white font-extrabold text-lg rounded-xl px-4 py-5 hover:bg-resq-darkRed transition-colors shadow-xl shadow-resq-red/20 mt-4 flex items-center justify-center gap-2"
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-resq-red text-white font-extrabold text-lg rounded-xl px-4 py-5 hover:bg-resq-darkRed transition-colors shadow-xl shadow-resq-red/20 mt-4 flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              🚨 DISPATCH EMERGENCY SOS
+              {loading ? "TRANSMITTING..." : "🚨 DISPATCH EMERGENCY SOS"}
             </button>
-            <p className="text-center text-xs text-gray-400 font-medium">
-              False reporting is a punishable offense under Sri Lankan law.
-            </p>
           </form>
 
         </div>
