@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function Hero() {
   return (
     <section className="relative w-full h-[600px] bg-resq-dark flex items-center overflow-hidden">
@@ -23,9 +25,15 @@ export default function Hero() {
 
         {/* Right Side: Image Placeholder */}
         <div className="w-full md:w-1/2 flex justify-end mt-10 md:mt-0 relative z-20">
-          {/* Replace this div with an actual <img /> tag when you have the ambulance asset */}
-          <div className="w-[500px] h-[300px] bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white/50 shadow-2xl">
-            [Ambulance Image / 3D Render Placeholder]
+          <div className="relative w-[500px] h-[300px] bg-white/10 backdrop-blur-md border border-white/20 rounded-xl overflow-hidden shadow-2xl">
+            <Image 
+              src="https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?q=80&w=1000&auto=format&fit=crop" 
+              alt="Emergency Ambulance Response" 
+              fill 
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+              priority
+            />
           </div>
         </div>
 
