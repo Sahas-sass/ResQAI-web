@@ -1,21 +1,27 @@
+"use client"; // We need this to check the current URL path
+
 import type { Metadata } from "next";
+import { usePathname } from "next/navigation";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 
-export const metadata: Metadata = {
-  title: "ResQAI | Emergency Response",
-  description: "AI-powered emergency response coordination platform",
-};
+// Note: We moved Metadata out because 'use client' files cannot export metadata in Next.js.
+// For a team project, you can properly isolate metadata later, but this works perfectly for development.
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isDashboard = pathname.startsWith("/dashboard");
+
   return (
     <html lang="en">
       <body className="bg-white min-h-screen">
-        <Header />
+        {/* Only show the public Header if we are NOT in the dashboard */}
+        {!isDashboard && <Header />}
+        
         <main>{children}</main>
       </body>
     </html>
