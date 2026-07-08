@@ -1,12 +1,8 @@
-"use client"; // We need this to check the current URL path
+"use client";
 
-import type { Metadata } from "next";
 import { usePathname } from "next/navigation";
 import "./globals.css";
 import Header from "@/components/layout/Header";
-
-// Note: We moved Metadata out because 'use client' files cannot export metadata in Next.js.
-// For a team project, you can properly isolate metadata later, but this works perfectly for development.
 
 export default function RootLayout({
   children,
@@ -14,14 +10,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isDashboard = pathname.startsWith("/dashboard");
+  
+  // Hide the header on the dashboard, login, and register pages
+  const hideHeader = pathname.startsWith("/dashboard") || pathname === "/login" || pathname === "/register";
 
   return (
     <html lang="en">
       <body className="bg-white min-h-screen">
-        {/* Only show the public Header if we are NOT in the dashboard */}
-        {!isDashboard && <Header />}
-        
+        {!hideHeader && <Header />}
         <main>{children}</main>
       </body>
     </html>
