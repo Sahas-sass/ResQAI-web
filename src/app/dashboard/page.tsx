@@ -15,6 +15,7 @@ interface SOSReport {
 export default function DashboardHome() {
   const [reports, setReports] = useState<SOSReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalResponders, setTotalResponders] = useState(0);
 
   useEffect(() => {
     // 1. Fetch initial data on load
@@ -31,10 +32,20 @@ export default function DashboardHome() {
       setLoading(false);
     };
 
-    fetchReports();
+    const fetchRespondersCount = async () => {
+      const { count, error } = await supabase
+        .from("responders")
+        .select("*", { count: "exact", head: true });
 
-    // 2. Set up the Realtime Subscription
-    // This listens for any new INSERTS to the sos_reports table
+      if (!error && count !== null) {
+        setTotalResponders(count);
+      }
+    };
+
+    fetchReports();
+    fetchRespondersCount();
+
+    // 2. Set up the Realtime Subscription for SOS reports
     const subscription = supabase
       .channel("sos_reports_channel")
       .on(
@@ -51,9 +62,22 @@ export default function DashboardHome() {
       )
       .subscribe();
 
-    // Cleanup subscription when leaving the page
+    // Realtime subscription for responders count updates
+    const respondersSub = supabase
+      .channel("responders_count_channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "responders" },
+        () => {
+          fetchRespondersCount();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions when leaving the page
     return () => {
       supabase.removeChannel(subscription);
+      supabase.removeChannel(respondersSub);
     };
   }, []);
 
@@ -64,7 +88,7 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
           { title: "Active Emergencies", value: reports.length.toString(), color: "text-resq-red" },
-          { title: "Available Units", value: "34", color: "text-green-600" },
+          { title: "Total Responders", value: loading ? "..." : totalResponders.toString(), color: "text-green-600" },
           { title: "High Severity", value: "3", color: "text-orange-500" },
           { title: "Avg Response Time", value: "8m 42s", color: "text-blue-600" }
         ].map((stat, i) => (
