@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+print("DEBUG URL:", os.environ.get("SUPABASE_URL"))
+print("DEBUG KEY:", "FOUND" if os.environ.get("SUPABASE_KEY") else "MISSING")
+
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 
