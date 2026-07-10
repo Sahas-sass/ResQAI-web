@@ -128,7 +128,7 @@ export default function DashboardHome() {
       
       <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Command Overview</h1>
       
-      {/* Top Stats Row (Merged with your 4-column layout & dark mode) */}
+      {/* Top Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
           { title: "Active Emergencies", value: reports.length.toString(), color: "text-red-500" },

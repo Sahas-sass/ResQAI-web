@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 // Define all navigation routes here. 
 // I added "Command Overview" as the main /dashboard route!
@@ -16,6 +18,47 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [operatorName, setOperatorName] = useState("Loading...");
+  const [avatarInitials, setAvatarInitials] = useState("OP");
+
+  useEffect(() => {
+    async function getOperator() {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (!error && user) {
+          const email = user.email || "";
+          const emailName = email.split("@")[0];
+          
+          // Get name from metadata if it exists, otherwise use email prefix
+          const fullName = user.user_metadata?.full_name || user.user_metadata?.name || emailName;
+          
+          // Format initials
+          const nameParts = fullName.trim().split(/\s+/);
+          let initials = "OP";
+          if (nameParts.length > 0 && nameParts[0]) {
+            initials = nameParts[0].substring(0, 1).toUpperCase();
+            if (nameParts.length > 1 && nameParts[1]) {
+              initials += nameParts[1].substring(0, 1).toUpperCase();
+            }
+          } else {
+            initials = email.substring(0, 2).toUpperCase();
+          }
+
+          setOperatorName(fullName);
+          setAvatarInitials(initials);
+        } else {
+          setOperatorName("Operator 01");
+          setAvatarInitials("OP");
+        }
+      } catch (err) {
+        console.error(err);
+        setOperatorName("Operator 01");
+        setAvatarInitials("OP");
+      }
+    }
+
+    getOperator();
+  }, []);
 
   return (
     <aside className="w-64 h-screen bg-neutral-950 border-r border-neutral-800 flex flex-col justify-between">
@@ -54,18 +97,18 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* Operator 01 Profile Card */}
+      {/* Operator Profile Card */}
       <div className="p-4 border-t border-neutral-800">
         <div className="flex items-center gap-3 p-3 bg-[#13151a] rounded-xl border border-neutral-800">
           
           {/* Avatar */}
           <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 shadow-inner">
-            <span className="text-neutral-300 font-bold text-sm">OP</span>
+            <span className="text-neutral-300 font-bold text-sm">{avatarInitials}</span>
           </div>
           
           {/* Status Text */}
           <div>
-            <p className="text-sm font-bold text-white">Operator 01</p>
+            <p className="text-sm font-bold text-white truncate max-w-[130px]">{operatorName}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               {/* Pulsing Green Dot */}
               <span className="relative flex h-2 w-2">
