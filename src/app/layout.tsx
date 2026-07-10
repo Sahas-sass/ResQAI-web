@@ -15,8 +15,8 @@ export default function RootLayout({
   const hideHeader = pathname.startsWith("/dashboard") || pathname === "/login" || pathname === "/register";
 
   return (
-    <html lang="en">
-      <body className="bg-white min-h-screen">
+    <html lang="en" suppressHydrationWarning>
+      <body className="bg-white min-h-screen" suppressHydrationWarning>
         {!hideHeader && <Header />}
         <main>{children}</main>
       </body>

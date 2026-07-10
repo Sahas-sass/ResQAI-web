@@ -7,8 +7,9 @@ import { supabase } from "@/lib/supabase";
 export default function SOSReport() {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+  const [status, setStatus] = useState<{ type: 'error' | 'success', text: string } | null>(null); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,23 +22,84 @@ export default function SOSReport() {
     setLoading(true);
     setStatus(null);
 
-    // Insert the data into our new Supabase table
-    const { error } = await supabase
-      .from('sos_reports')
-      .insert([
-        { location: location, description: description }
-      ]);
+    try {
+      // --- MEMBER 3: GEOSPATIAL PIPELINE ---
+      let latitude = null;
+      let longitude = null;
 
-    if (error) {
-      setStatus({ type: 'error', text: "Failed to dispatch SOS: " + error.message });
-    } else {
+      const geocodeResponse = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address: location }),
+      });
+
+      if (geocodeResponse.ok) {
+        const coords = await geocodeResponse.json();
+        latitude = coords.lat;
+        longitude = coords.lng;
+      } else {
+        console.warn("Geocoding failed, processing report with null coordinates.");
+      }
+
+      // --- MEMBER 1: STORAGE PIPELINE ---
+      let mediaUrl: string | null = null;
+
+      if (mediaFile) {
+        try {
+          const fileName = `${Date.now()}-${mediaFile.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("sos_media")
+            .upload(fileName, mediaFile);
+
+          if (uploadError) {
+            console.error("Evidence upload failed:", uploadError.message);
+            mediaUrl = null;
+          } else {
+            const { data: urlData } = supabase.storage
+              .from("sos_media")
+              .getPublicUrl(uploadData.path);
+            mediaUrl = urlData.publicUrl;
+          }
+        } catch (error) {
+          console.error("Unexpected upload error:", error);
+          mediaUrl = null;
+        }
+      }
+
+      // --- CONSOLIDATED DATABASE INSERT (NO CONFLICTS) ---
+      const { error } = await supabase
+        .from('sos_reports')
+        .insert([
+          { 
+            location: location, 
+            description: description,
+            media_urls: mediaUrl ? [mediaUrl] : [],
+            latitude: latitude,    // Saved as float8
+            longitude: longitude,  // Saved as float8
+            status: 'pending'      // Ready for Member 2 & 4 workflows
+          }
+        ]);
+
+      if (error) {
+        throw error;
+      }
+
       setStatus({ type: 'success', text: "SOS DISPATCHED SUCCESSFULLY. Help is on the way." });
       // Clear the form on success
       setLocation("");
       setDescription("");
+      setMediaFile(null);
+
+    } catch (error: any) {
+      setStatus({ 
+        type: 'error', 
+        text: "Failed to dispatch SOS: " + (error.message || error) 
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
@@ -103,6 +165,41 @@ export default function SOSReport() {
                 className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-resq-red transition resize-none"
                 disabled={loading}
               ></textarea>
+            </div>
+
+            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
+              <label className="block text-sm font-bold text-resq-dark mb-3 flex items-center gap-2">
+                <span className="w-6 h-6 bg-resq-dark text-white rounded-full flex items-center justify-center text-xs">3</span>
+                Upload Evidence
+              </label>
+
+              <input
+                type="file"
+                accept=".jpg,.png,.mp4,.wav"
+                disabled={loading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  if (file.size > 5 * 1024 * 1024) {
+                    setStatus({
+                      type: "error",
+                      text: "File size must be less than 5MB."
+                    });
+                    return;
+                  }
+
+                  setMediaFile(file);
+                  setStatus(null);
+                }}
+                className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm"
+              />
+
+              {mediaFile && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Selected: {mediaFile.name}
+                </p>
+              )}
             </div>
 
             <button 
