@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-
+import LiveDashboardMap from "@/components/dashboard/LiveDashboardMap";
 // Define the shape of our data
 interface SOSReport {
   id: string;
@@ -10,6 +10,8 @@ interface SOSReport {
   description: string;
   status: string;
   created_at: string;
+  latitude: number | null; 
+  longitude: number | null;
 }
 
 export default function DashboardHome() {
@@ -106,7 +108,7 @@ export default function DashboardHome() {
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Live Incident Map</h2>
           <div className="flex-1 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-            <span className="text-gray-400 font-medium">[ Google Maps Component Goes Here ]</span>
+            <LiveDashboardMap reports={reports} />
           </div>
         </div>
 
