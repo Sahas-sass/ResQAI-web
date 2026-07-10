@@ -12,98 +12,95 @@ export default function SOSReport() {
   const [status, setStatus] = useState<{ type: 'error' | 'success', text: string } | null>(null); 
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!location || !description) {
-    setStatus({ type: 'error', text: "Please provide both location and description." });
-    return;
-  }
-
-  setLoading(true);
-  setStatus(null);
-
-  let mediaUrl: string | null = null;
-
-  // Step 1: Upload evidence if a file is selected
-  // Step 1: Try uploading evidence
-if (mediaFile) {
-
-  try {
-
-    const fileName = `${Date.now()}-${mediaFile.name}`;
-
-    const { data: uploadData, error: uploadError } =
-      await supabase.storage
-        .from("sos_media")
-        .upload(fileName, mediaFile);
-
-
-
-    if (uploadError) {
-      console.error(
-        "Evidence upload failed:",
-        uploadError.message
-      );
-
-      // Continue without media
-      mediaUrl = null;
-
-    } else {
-
-      const { data: urlData } =
-        supabase.storage
-          .from("sos_media")
-          .getPublicUrl(uploadData.path);
-
-
-      mediaUrl = urlData.publicUrl;
-
+    e.preventDefault();
+    
+    if (!location || !description) {
+      setStatus({ type: 'error', text: "Please provide both location and description." });
+      return;
     }
 
+    setLoading(true);
+    setStatus(null);
 
-  } catch (error) {
+    try {
+      // --- MEMBER 3: GEOSPATIAL PIPELINE ---
+      let latitude = null;
+      let longitude = null;
 
-    console.error(
-      "Unexpected upload error:",
-      error
-    );
+      const geocodeResponse = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address: location }),
+      });
 
-    // Do not stop SOS submission
-    mediaUrl = null;
-
-  }
-
-}
-  // Step 2: Save SOS report with media URL
-  const { error } = await supabase
-    .from('sos_reports')
-    .insert([
-      { 
-        location: location, 
-        description: description,
-        media_urls: mediaUrl ? [mediaUrl] : []
+      if (geocodeResponse.ok) {
+        const coords = await geocodeResponse.json();
+        latitude = coords.lat;
+        longitude = coords.lng;
+      } else {
+        console.warn("Geocoding failed, processing report with null coordinates.");
       }
-    ]);
 
-  if (error) {
-    setStatus({ 
-      type: 'error', 
-      text: "Failed to dispatch SOS: " + error.message 
-    });
-  } else {
-    setStatus({ 
-      type: 'success', 
-      text: "SOS DISPATCHED SUCCESSFULLY. Help is on the way." 
-    });
+      // --- MEMBER 1: STORAGE PIPELINE ---
+      let mediaUrl: string | null = null;
 
-    // Clear the form on success
-    setLocation("");
-    setDescription("");
-    setMediaFile(null);
-  }
-  
-  setLoading(false);
-};
+      if (mediaFile) {
+        try {
+          const fileName = `${Date.now()}-${mediaFile.name}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("sos_media")
+            .upload(fileName, mediaFile);
+
+          if (uploadError) {
+            console.error("Evidence upload failed:", uploadError.message);
+            mediaUrl = null;
+          } else {
+            const { data: urlData } = supabase.storage
+              .from("sos_media")
+              .getPublicUrl(uploadData.path);
+            mediaUrl = urlData.publicUrl;
+          }
+        } catch (error) {
+          console.error("Unexpected upload error:", error);
+          mediaUrl = null;
+        }
+      }
+
+      // --- CONSOLIDATED DATABASE INSERT (NO CONFLICTS) ---
+      const { error } = await supabase
+        .from('sos_reports')
+        .insert([
+          { 
+            location: location, 
+            description: description,
+            media_urls: mediaUrl ? [mediaUrl] : [],
+            latitude: latitude,    // Saved as float8
+            longitude: longitude,  // Saved as float8
+            status: 'pending'      // Ready for Member 2 & 4 workflows
+          }
+        ]);
+
+      if (error) {
+        throw error;
+      }
+
+      setStatus({ type: 'success', text: "SOS DISPATCHED SUCCESSFULLY. Help is on the way." });
+      // Clear the form on success
+      setLocation("");
+      setDescription("");
+      setMediaFile(null);
+
+    } catch (error: any) {
+      setStatus({ 
+        type: 'error', 
+        text: "Failed to dispatch SOS: " + (error.message || error) 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center py-12 px-4 relative">
@@ -171,29 +168,26 @@ if (mediaFile) {
             </div>
 
             <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-            <label className="block text-sm font-bold text-resq-dark mb-3 flex items-center gap-2">
-              <span className="w-6 h-6 bg-resq-dark text-white rounded-full flex items-center justify-center text-xs">
-                3
-              </span>
-              Upload Evidence
-            </label>
+              <label className="block text-sm font-bold text-resq-dark mb-3 flex items-center gap-2">
+                <span className="w-6 h-6 bg-resq-dark text-white rounded-full flex items-center justify-center text-xs">3</span>
+                Upload Evidence
+              </label>
 
-            <input
-              type="file"
-              accept=".jpg,.png,.mp4,.wav"
-              disabled={loading}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
+              <input
+                type="file"
+                accept=".jpg,.png,.mp4,.wav"
+                disabled={loading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
 
-                if (!file) return;
-
-                if (file.size > 5 * 1024 * 1024) {
-                  setStatus({
-                    type: "error",
-                    text: "File size must be less than 5MB."
-                  });
-                  return;
-                }
+                  if (file.size > 5 * 1024 * 1024) {
+                    setStatus({
+                      type: "error",
+                      text: "File size must be less than 5MB."
+                    });
+                    return;
+                  }
 
                   setMediaFile(file);
                   setStatus(null);
