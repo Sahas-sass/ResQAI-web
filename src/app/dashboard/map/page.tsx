@@ -38,21 +38,35 @@ export default function CommandCenterMap() {
           .not("longitude", "is", null);
 
         if (error) throw error;
-        
-        // Use type assertion (as SOSReport[]) to let TypeScript know the data is safe to map
         if (data) setReports(data as SOSReport[]);
-        
       } catch (err) {
         console.error("Error fetching map vectors:", err);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchActiveIncidents();
 
-    // 2. Fix for default Leaflet marker assets breaking inside Next.js build bundles
-    // This dynamically fixes the missing icon paths at runtime
+    // 2. REAL-TIME WEBSOCKET SUBSCRIPTION: Catch records live from Postgres
+    const realTimeChannel = supabase
+      .channel("live_map_stream")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "sos_reports" },
+        (payload) => {
+          const newIncident = payload.new as SOSReport;
+          
+          // Only plot the pin if it has valid processed geocode coordinates
+          if (newIncident.latitude && newIncident.longitude) {
+            console.log("🚨 Real-time incident vector received:", newIncident);
+            setReports((prevReports) => [newIncident, ...prevReports]);
+          }
+        }
+      )
+      .subscribe();
+
+    // 3. Fix for default Leaflet marker assets breaking inside Next.js build bundles
     const fixLeafletIcons = async () => {
       const L = (await import("leaflet")).default;
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -63,6 +77,11 @@ export default function CommandCenterMap() {
       });
     };
     fixLeafletIcons();
+
+    // Clean up websocket subscription when the operator leaves the map view
+    return () => {
+      supabase.removeChannel(realTimeChannel);
+    };
   }, []);
 
   return (
