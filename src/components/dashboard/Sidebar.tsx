@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image"; // 1. Import Image
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
-// Define all navigation routes here. 
-// I added "Command Overview" as the main /dashboard route!
 const navItems = [
   { name: "Command Overview", href: "/dashboard", icon: "🖥️" },
   { name: "Live Crisis Map", href: "/dashboard/map", icon: "🗺️" },
@@ -28,11 +27,8 @@ export default function Sidebar() {
         if (!error && user) {
           const email = user.email || "";
           const emailName = email.split("@")[0];
-          
-          // Get name from metadata if it exists, otherwise use email prefix
           const fullName = user.user_metadata?.full_name || user.user_metadata?.name || emailName;
           
-          // Format initials
           const nameParts = fullName.trim().split(/\s+/);
           let initials = "OP";
           if (nameParts.length > 0 && nameParts[0]) {
@@ -46,9 +42,6 @@ export default function Sidebar() {
 
           setOperatorName(fullName);
           setAvatarInitials(initials);
-        } else {
-          setOperatorName("Operator 01");
-          setAvatarInitials("OP");
         }
       } catch (err) {
         console.error(err);
@@ -56,7 +49,6 @@ export default function Sidebar() {
         setAvatarInitials("OP");
       }
     }
-
     getOperator();
   }, []);
 
@@ -65,10 +57,21 @@ export default function Sidebar() {
       <div>
         {/* Top Header / Logo */}
         <div className="p-6">
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            <span className="bg-red-600 text-white px-2 py-1 rounded">R</span> 
-            ResQAI <span className="border border-neutral-700 text-xs px-1 rounded text-neutral-400">OPS</span>
-          </h1>
+          <Link href="/dashboard" className="flex items-center gap-3">
+            {/* 2. Swapped the red 'R' div for your custom logo */}
+            <div className="relative w-10 h-10 overflow-hidden rounded-xl bg-neutral-900 border border-neutral-800">
+              <Image 
+                src="/logo.png" 
+                alt="ResQAI Logo" 
+                fill 
+                className="object-contain p-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold text-white leading-tight">ResQAI</span>
+              <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Command Ops</span>
+            </div>
+          </Link>
         </div>
 
         {/* Dynamic Navigation */}
@@ -76,9 +79,7 @@ export default function Sidebar() {
           <p className="text-xs font-semibold text-neutral-500 mb-4 px-2 tracking-wider">MAIN MENU</p>
           
           {navItems.map((item) => {
-            // Checks if the current URL matches the button's destination
             const isActive = pathname === item.href;
-
             return (
               <Link 
                 key={item.name} 
@@ -100,17 +101,12 @@ export default function Sidebar() {
       {/* Operator Profile Card */}
       <div className="p-4 border-t border-neutral-800">
         <div className="flex items-center gap-3 p-3 bg-[#13151a] rounded-xl border border-neutral-800">
-          
-          {/* Avatar */}
           <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center border border-neutral-700 shadow-inner">
             <span className="text-neutral-300 font-bold text-sm">{avatarInitials}</span>
           </div>
-          
-          {/* Status Text */}
           <div>
             <p className="text-sm font-bold text-white truncate max-w-[130px]">{operatorName}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
-              {/* Pulsing Green Dot */}
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -118,7 +114,6 @@ export default function Sidebar() {
               <p className="text-xs text-green-500 font-medium">Active</p>
             </div>
           </div>
-          
         </div>
       </div>
     </aside>
