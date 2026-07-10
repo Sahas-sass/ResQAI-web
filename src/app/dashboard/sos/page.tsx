@@ -106,7 +106,7 @@ export default function IncomingSOS() {
 
 
     return (
-    <div className="w-full h-full">
+    <div className="w-full px-6">
 
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -144,7 +144,7 @@ export default function IncomingSOS() {
 
 
 
-      <div className="space-y-5">
+      <div className="space-y-4 px-4">
 
         {reports.map((report)=>(
 
