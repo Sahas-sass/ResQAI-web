@@ -156,9 +156,9 @@ export default function DashboardHome() {
         
         {/* Left Side: Live Map Area (2/3 width) */}
 
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Live Incident Map</h2>
-          <div className="flex-1 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+        <div className="lg:col-span-2 bg-[#13151a]  rounded-xl border border-neutral-800 shadow-sm p-6 flex flex-col">
+          <h2 className="text-lg font-bold text-white-800 mb-4">Live Incident Map</h2>
+          <div className="flex-1 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-black/60">
             <LiveDashboardMap reports={reports} />
 
           </div>
