@@ -12,34 +12,98 @@ export default function SOSReport() {
   const [status, setStatus] = useState<{ type: 'error' | 'success', text: string } | null>(null); 
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!location || !description) {
-      setStatus({ type: 'error', text: "Please provide both location and description." });
-      return;
-    }
+  e.preventDefault();
+  
+  if (!location || !description) {
+    setStatus({ type: 'error', text: "Please provide both location and description." });
+    return;
+  }
 
-    setLoading(true);
-    setStatus(null);
+  setLoading(true);
+  setStatus(null);
 
-    // Insert the data into our new Supabase table
-    const { error } = await supabase
-      .from('sos_reports')
-      .insert([
-        { location: location, description: description }
-      ]);
+  let mediaUrl: string | null = null;
 
-    if (error) {
-      setStatus({ type: 'error', text: "Failed to dispatch SOS: " + error.message });
+  // Step 1: Upload evidence if a file is selected
+  // Step 1: Try uploading evidence
+if (mediaFile) {
+
+  try {
+
+    const fileName = `${Date.now()}-${mediaFile.name}`;
+
+    const { data: uploadData, error: uploadError } =
+      await supabase.storage
+        .from("sos_media")
+        .upload(fileName, mediaFile);
+
+
+
+    if (uploadError) {
+      console.error(
+        "Evidence upload failed:",
+        uploadError.message
+      );
+
+      // Continue without media
+      mediaUrl = null;
+
     } else {
-      setStatus({ type: 'success', text: "SOS DISPATCHED SUCCESSFULLY. Help is on the way." });
-      // Clear the form on success
-      setLocation("");
-      setDescription("");
+
+      const { data: urlData } =
+        supabase.storage
+          .from("sos_media")
+          .getPublicUrl(uploadData.path);
+
+
+      mediaUrl = urlData.publicUrl;
+
     }
-    
-    setLoading(false);
-  };
+
+
+  } catch (error) {
+
+    console.error(
+      "Unexpected upload error:",
+      error
+    );
+
+    // Do not stop SOS submission
+    mediaUrl = null;
+
+  }
+
+}
+  // Step 2: Save SOS report with media URL
+  const { error } = await supabase
+    .from('sos_reports')
+    .insert([
+      { 
+        location: location, 
+        description: description,
+        media_urls: mediaUrl ? [mediaUrl] : []
+      }
+    ]);
+
+  if (error) {
+    setStatus({ 
+      type: 'error', 
+      text: "Failed to dispatch SOS: " + error.message 
+    });
+  } else {
+    setStatus({ 
+      type: 'success', 
+      text: "SOS DISPATCHED SUCCESSFULLY. Help is on the way." 
+    });
+
+    // Clear the form on success
+    setLocation("");
+    setDescription("");
+    setMediaFile(null);
+  }
+  
+  setLoading(false);
+};
 
   return (
     <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center py-12 px-4 relative">
