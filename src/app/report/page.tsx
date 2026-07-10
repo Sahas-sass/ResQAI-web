@@ -7,8 +7,9 @@ import { supabase } from "@/lib/supabase";
 export default function SOSReport() {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+  const [status, setStatus] = useState<{ type: 'error' | 'success', text: string } | null>(null); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +104,44 @@ export default function SOSReport() {
                 className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700 focus:outline-none focus:border-resq-red transition resize-none"
                 disabled={loading}
               ></textarea>
+            </div>
+
+            <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
+            <label className="block text-sm font-bold text-resq-dark mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 bg-resq-dark text-white rounded-full flex items-center justify-center text-xs">
+                3
+              </span>
+              Upload Evidence
+            </label>
+
+            <input
+              type="file"
+              accept=".jpg,.png,.mp4,.wav"
+              disabled={loading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+
+                if (!file) return;
+
+                if (file.size > 5 * 1024 * 1024) {
+                  setStatus({
+                    type: "error",
+                    text: "File size must be less than 5MB."
+                  });
+                  return;
+                }
+
+                  setMediaFile(file);
+                  setStatus(null);
+                }}
+                className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm"
+              />
+
+              {mediaFile && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Selected: {mediaFile.name}
+                </p>
+              )}
             </div>
 
             <button 
