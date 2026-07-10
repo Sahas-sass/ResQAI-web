@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image"; // 1. Import Image
 
 export default function Header() {
   return (
@@ -7,10 +8,16 @@ export default function Header() {
       {/* Top Tier: Brand & Action Links */}
       <div className="flex items-center justify-between px-4 md:px-8 py-3 bg-white">
         
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#e60000] rounded-full flex items-center justify-center text-white font-bold text-lg">
-            R
+        {/* Logo Section */}
+        <Link href="/" className="flex items-center gap-3">
+          {/* 2. Replaced the circular div with the Image component */}
+          <div className="relative w-10 h-10">
+            <Image 
+              src="/logo.png" 
+              alt="ResQAI Logo" 
+              fill 
+              className="object-contain"
+            />
           </div>
           <span className="text-2xl font-bold text-black tracking-tight">
             ResQ<span className="text-[#e60000]">AI</span>
@@ -23,7 +30,6 @@ export default function Header() {
             <span className="text-blue-500 text-lg">🔍</span> Search Now
           </button>
           
-          {/* Linked securely to our new Operator Authentication flow */}
           <Link href="/login" className="flex items-center gap-2 hover:text-[#e60000] transition">
             <span className="text-gray-400 text-lg">📄</span> Operator Login
           </Link>
@@ -32,7 +38,6 @@ export default function Header() {
             <span className="text-pink-600 text-lg">📞</span> Contact Us
           </Link>
           
-          {/* Linked directly to the public SOS form we built */}
           <Link href="/report">
             <button className="bg-[#e60000] text-white font-bold py-2.5 px-6 rounded-full hover:bg-red-800 transition shadow-sm">
               Emergency SOS
