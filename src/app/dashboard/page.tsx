@@ -196,7 +196,7 @@ export default function DashboardHome() {
                     </button>
                     
                     <Link 
-                      href={`/dashboard/sos/${report.id}`} 
+                      href={`/dashboard/sos`} 
                       className="px-4 py-2 flex items-center justify-center bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs font-bold rounded-lg hover:bg-neutral-700 transition-all"
                     >
                       Details
