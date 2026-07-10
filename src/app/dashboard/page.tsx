@@ -128,7 +128,7 @@ export default function DashboardHome() {
       
       <h1 className="text-3xl font-bold tracking-tight text-white mb-2">Command Overview</h1>
       
-      {/* Top Stats Row (Merged with your 4-column layout & dark mode) */}
+      {/* Top Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
           { title: "Active Emergencies", value: reports.length.toString(), color: "text-red-500" },
@@ -196,7 +196,7 @@ export default function DashboardHome() {
                     </button>
                     
                     <Link 
-                      href={`/dashboard/sos/${report.id}`} 
+                      href={`/dashboard/sos`} 
                       className="px-4 py-2 flex items-center justify-center bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs font-bold rounded-lg hover:bg-neutral-700 transition-all"
                     >
                       Details
