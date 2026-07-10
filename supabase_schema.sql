@@ -7,6 +7,7 @@ drop table if exists public.emergency_units cascade;
 -- 1. Ensure latitude/longitude columns exist on the public.sos_reports table
 alter table public.sos_reports add column if not exists latitude double precision;
 alter table public.sos_reports add column if not exists longitude double precision;
+alter table public.sos_reports add column if not exists media_urls text[]; --new coloumn
 
 -- 2. Create responders table (consolidated with roles and status)
 create table public.responders (
