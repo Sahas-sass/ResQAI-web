@@ -121,9 +121,18 @@ uvicorn main:app --reload
 ```
 > \*\*Note:\*\* For production, the AI engine is configured to deploy directly to Render using Python 3.11.9 to ensure smooth compilation of the spaCy C++ dependencies.
 ---
-🔒 Security & Privacy
-Row Level Security (RLS): Citizen submissions are public-write, but strictly authenticated-read.
-Data Integrity: The AI microservice communicates with the database using a secure Service Role Key, preventing unauthorized API grading manipulation.
+
+## 🔒 Security & Privacy
+
+### Row Level Security (RLS)
+Supabase Row Level Security policies ensure that citizen reports can be submitted publicly while restricting access to sensitive incident data to authenticated and authorized personnel only.
+
+### Secure AI Integration
+The AI triage service communicates with Supabase using a securely managed Service Role Key, allowing trusted server-side operations while preventing unauthorized access or manipulation of incident classifications.
+
+### Protected Evidence Storage
+Uploaded photos and audio files are stored in secure Supabase Storage buckets with access controlled through authentication and RLS policies, ensuring sensitive evidence remains protected.
+
 ---
 📌 Closing Statement
 Designed for synchronization. Built for speed.
