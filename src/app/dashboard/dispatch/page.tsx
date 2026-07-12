@@ -8,6 +8,8 @@ interface SOSReport {
   location: string;
   description: string;
   status: string;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
 }
 
@@ -17,6 +19,8 @@ interface Responder {
   contact_number: string;
   role: 'medical' | 'fire' | 'police' | 'military';
   status: 'available' | 'busy';
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function DispatchPage() {
@@ -240,6 +244,33 @@ export default function DispatchPage() {
     (r) => roleFilter === "all" || r.role === roleFilter
   );
 
+  // Helper to calculate distance in km using Haversine formula
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Sort available responders based on distance to selected emergency (nearest first)
+  const sortedResponders = filteredResponders.map((r) => {
+    let distance: number | null = null;
+    if (selectedReport?.latitude && selectedReport?.longitude && r.latitude && r.longitude) {
+      distance = getDistance(selectedReport.latitude, selectedReport.longitude, r.latitude, r.longitude);
+    }
+    return { ...r, distance };
+  }).sort((a, b) => {
+    if (a.distance === null && b.distance === null) return 0;
+    if (a.distance === null) return 1; // Put missing location at bottom
+    if (b.distance === null) return -1;
+    return a.distance - b.distance;
+  });
+
   return (
     <div className="p-8 min-h-screen bg-neutral-950 text-white flex flex-col gap-6 relative">
       {/* Header */}
@@ -371,7 +402,7 @@ export default function DispatchPage() {
                 <p className="font-semibold">Select an SOS report first</p>
                 <p className="text-xs text-neutral-700 mt-1">Select an active SOS from the left queue to unlock the deployable crew.</p>
               </div>
-            ) : filteredResponders.length === 0 ? (
+            ) : sortedResponders.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-neutral-600 text-center py-20">
                 <span className="text-4xl mb-2">🚨</span>
                 <p className="font-semibold">No available crew for this role</p>
@@ -379,13 +410,13 @@ export default function DispatchPage() {
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto max-h-[500px] flex flex-col gap-4 pr-1 scrollbar-thin scrollbar-thumb-neutral-800">
-                {filteredResponders.map((resp) => {
+                {sortedResponders.map((resp) => {
                   const isSelected = selectedResponder?.id === resp.id;
                   
                   return (
                     <div
                       key={resp.id}
-                      onClick={() => setSelectedResponder(resp)}
+                      onClick={() => setSelectedResponder(resp as any)}
                       className={`p-5 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-2 ${
                         isSelected
                           ? "bg-green-950/20 border-green-600/70 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
@@ -404,6 +435,11 @@ export default function DispatchPage() {
 
                       <div className="flex justify-between items-center text-xs text-neutral-500 mt-1">
                         <span>Contact: <span className="font-mono text-neutral-400">{resp.contact_number}</span></span>
+                        {resp.distance !== null && (
+                          <span className="text-green-400 font-extrabold tracking-wide text-xs">
+                            📍 {resp.distance.toFixed(2)} km away
+                          </span>
+                        )}
                       </div>
 
                       {/* Dispatch Trigger button */}
