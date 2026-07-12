@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface SOSReport {
@@ -31,6 +31,15 @@ export default function DispatchPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const selectedReportRef = useRef<SOSReport | null>(null);
+  const selectedResponderRef = useRef<Responder | null>(null);
+
+  // Sync refs with state changes so callbacks always access the latest state
+  useEffect(() => {
+    selectedReportRef.current = selectedReport;
+    selectedResponderRef.current = selectedResponder;
+  }, [selectedReport, selectedResponder]);
+
   useEffect(() => {
     // 1. Initial Fetch
     const fetchData = async () => {
@@ -49,13 +58,30 @@ export default function DispatchPage() {
         .eq("status", "available")
         .order("name", { ascending: true });
 
+      let filteredSOS: SOSReport[] = [];
+      let urlSosId: string | null = null;
+      if (typeof window !== "undefined") {
+        const queryParams = new URLSearchParams(window.location.search);
+        urlSosId = queryParams.get("sosId");
+      }
+
       if (!sosErr && sosData) {
-        // Filter out any status that contains 'dispatched'
-        setReports(sosData.filter(r => !r.status.includes("dispatched")));
+        // Filter out status containing 'dispatched', EXCEPT if it matches urlSosId
+        filteredSOS = sosData.filter(r => !r.status.includes("dispatched") || r.id === urlSosId);
+        setReports(filteredSOS);
       }
       if (!respErr && respData) {
         setResponders(respData);
       }
+
+      // Auto-select report if sosId is in URL query parameters
+      if (urlSosId && filteredSOS.length > 0) {
+        const matched = filteredSOS.find(r => r.id === urlSosId);
+        if (matched) {
+          setSelectedReport(matched);
+        }
+      }
+
       setLoading(false);
     };
 
@@ -74,7 +100,7 @@ export default function DispatchPage() {
 
             if (payload.eventType === "DELETE" || (payload.eventType === "UPDATE" && updated.status.includes("dispatched"))) {
               // Remove if deleted or marked as dispatched
-              if (selectedReport?.id === old.id || selectedReport?.id === updated.id) {
+              if (selectedReportRef.current?.id === old.id || selectedReportRef.current?.id === updated.id) {
                 setSelectedReport(null);
                 setSelectedResponder(null);
               }
@@ -103,7 +129,7 @@ export default function DispatchPage() {
             const old = payload.old as { id: string };
 
             if (payload.eventType === "DELETE" || (payload.eventType === "UPDATE" && updated.status !== "available")) {
-              if (selectedResponder?.id === old.id || selectedResponder?.id === updated.id) {
+              if (selectedResponderRef.current?.id === old.id || selectedResponderRef.current?.id === updated.id) {
                 setSelectedResponder(null);
               }
               return current.filter(item => item.id !== old.id && item.id !== updated.id);
@@ -133,7 +159,7 @@ export default function DispatchPage() {
       supabase.removeChannel(sosChannel);
       supabase.removeChannel(responderChannel);
     };
-  }, [selectedReport, selectedResponder]);
+  }, []);
 
   // Action: Dispatch responder using atomic RPC function
   const handleConfirmDispatch = async () => {
@@ -383,13 +409,16 @@ export default function DispatchPage() {
                       {/* Dispatch Trigger button */}
                       {isSelected && (
                         <button
+                          disabled={selectedReport.status?.toLowerCase().includes("dispatched")}
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowModal(true);
                           }}
-                          className="mt-3 w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm rounded-xl transition duration-150 shadow-md shadow-red-900/20 hover:scale-[1.01] tracking-wide cursor-pointer"
+                          className="mt-3 w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm rounded-xl transition duration-150 shadow-md shadow-red-900/20 hover:scale-[1.01] tracking-wide cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          🚨 CONFIRM DEPLOYMENT
+                          {selectedReport.status?.toLowerCase().includes("dispatched") 
+                            ? "🚨 CASE ALREADY DISPATCHED" 
+                            : "🚨 CONFIRM DEPLOYMENT"}
                         </button>
                       )}
                     </div>
