@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
 interface SOSReport {
@@ -8,6 +8,8 @@ interface SOSReport {
   location: string;
   description: string;
   status: string;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
 }
 
@@ -17,6 +19,8 @@ interface Responder {
   contact_number: string;
   role: 'medical' | 'fire' | 'police' | 'military';
   status: 'available' | 'busy';
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export default function DispatchPage() {
@@ -30,6 +34,15 @@ export default function DispatchPage() {
   const [showModal, setShowModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const selectedReportRef = useRef<SOSReport | null>(null);
+  const selectedResponderRef = useRef<Responder | null>(null);
+
+  // Sync refs with state changes so callbacks always access the latest state
+  useEffect(() => {
+    selectedReportRef.current = selectedReport;
+    selectedResponderRef.current = selectedResponder;
+  }, [selectedReport, selectedResponder]);
 
   useEffect(() => {
     // 1. Initial Fetch
@@ -49,13 +62,30 @@ export default function DispatchPage() {
         .eq("status", "available")
         .order("name", { ascending: true });
 
+      let filteredSOS: SOSReport[] = [];
+      let urlSosId: string | null = null;
+      if (typeof window !== "undefined") {
+        const queryParams = new URLSearchParams(window.location.search);
+        urlSosId = queryParams.get("sosId");
+      }
+
       if (!sosErr && sosData) {
-        // Filter out any status that contains 'dispatched'
-        setReports(sosData.filter(r => !r.status.includes("dispatched")));
+        // Filter out status containing 'dispatched', EXCEPT if it matches urlSosId
+        filteredSOS = sosData.filter(r => !r.status.includes("dispatched") || r.id === urlSosId);
+        setReports(filteredSOS);
       }
       if (!respErr && respData) {
         setResponders(respData);
       }
+
+      // Auto-select report if sosId is in URL query parameters
+      if (urlSosId && filteredSOS.length > 0) {
+        const matched = filteredSOS.find(r => r.id === urlSosId);
+        if (matched) {
+          setSelectedReport(matched);
+        }
+      }
+
       setLoading(false);
     };
 
@@ -74,7 +104,7 @@ export default function DispatchPage() {
 
             if (payload.eventType === "DELETE" || (payload.eventType === "UPDATE" && updated.status.includes("dispatched"))) {
               // Remove if deleted or marked as dispatched
-              if (selectedReport?.id === old.id || selectedReport?.id === updated.id) {
+              if (selectedReportRef.current?.id === old.id || selectedReportRef.current?.id === updated.id) {
                 setSelectedReport(null);
                 setSelectedResponder(null);
               }
@@ -103,7 +133,7 @@ export default function DispatchPage() {
             const old = payload.old as { id: string };
 
             if (payload.eventType === "DELETE" || (payload.eventType === "UPDATE" && updated.status !== "available")) {
-              if (selectedResponder?.id === old.id || selectedResponder?.id === updated.id) {
+              if (selectedResponderRef.current?.id === old.id || selectedResponderRef.current?.id === updated.id) {
                 setSelectedResponder(null);
               }
               return current.filter(item => item.id !== old.id && item.id !== updated.id);
@@ -133,7 +163,7 @@ export default function DispatchPage() {
       supabase.removeChannel(sosChannel);
       supabase.removeChannel(responderChannel);
     };
-  }, [selectedReport, selectedResponder]);
+  }, []);
 
   // Action: Dispatch responder using atomic RPC function
   const handleConfirmDispatch = async () => {
@@ -213,6 +243,33 @@ export default function DispatchPage() {
   const filteredResponders = responders.filter(
     (r) => roleFilter === "all" || r.role === roleFilter
   );
+
+  // Helper to calculate distance in km using Haversine formula
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Sort available responders based on distance to selected emergency (nearest first)
+  const sortedResponders = filteredResponders.map((r) => {
+    let distance: number | null = null;
+    if (selectedReport?.latitude && selectedReport?.longitude && r.latitude && r.longitude) {
+      distance = getDistance(selectedReport.latitude, selectedReport.longitude, r.latitude, r.longitude);
+    }
+    return { ...r, distance };
+  }).sort((a, b) => {
+    if (a.distance === null && b.distance === null) return 0;
+    if (a.distance === null) return 1; // Put missing location at bottom
+    if (b.distance === null) return -1;
+    return a.distance - b.distance;
+  });
 
   return (
     <div className="p-8 min-h-screen bg-neutral-950 text-white flex flex-col gap-6 relative">
@@ -345,7 +402,7 @@ export default function DispatchPage() {
                 <p className="font-semibold">Select an SOS report first</p>
                 <p className="text-xs text-neutral-700 mt-1">Select an active SOS from the left queue to unlock the deployable crew.</p>
               </div>
-            ) : filteredResponders.length === 0 ? (
+            ) : sortedResponders.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-neutral-600 text-center py-20">
                 <span className="text-4xl mb-2">🚨</span>
                 <p className="font-semibold">No available crew for this role</p>
@@ -353,13 +410,13 @@ export default function DispatchPage() {
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto max-h-[500px] flex flex-col gap-4 pr-1 scrollbar-thin scrollbar-thumb-neutral-800">
-                {filteredResponders.map((resp) => {
+                {sortedResponders.map((resp) => {
                   const isSelected = selectedResponder?.id === resp.id;
                   
                   return (
                     <div
                       key={resp.id}
-                      onClick={() => setSelectedResponder(resp)}
+                      onClick={() => setSelectedResponder(resp as any)}
                       className={`p-5 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col gap-2 ${
                         isSelected
                           ? "bg-green-950/20 border-green-600/70 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
@@ -378,18 +435,26 @@ export default function DispatchPage() {
 
                       <div className="flex justify-between items-center text-xs text-neutral-500 mt-1">
                         <span>Contact: <span className="font-mono text-neutral-400">{resp.contact_number}</span></span>
+                        {resp.distance !== null && (
+                          <span className="text-green-400 font-extrabold tracking-wide text-xs">
+                            📍 {resp.distance.toFixed(2)} km away
+                          </span>
+                        )}
                       </div>
 
                       {/* Dispatch Trigger button */}
                       {isSelected && (
                         <button
+                          disabled={selectedReport.status?.toLowerCase().includes("dispatched")}
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowModal(true);
                           }}
-                          className="mt-3 w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm rounded-xl transition duration-150 shadow-md shadow-red-900/20 hover:scale-[1.01] tracking-wide cursor-pointer"
+                          className="mt-3 w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm rounded-xl transition duration-150 shadow-md shadow-red-900/20 hover:scale-[1.01] tracking-wide cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          🚨 CONFIRM DEPLOYMENT
+                          {selectedReport.status?.toLowerCase().includes("dispatched") 
+                            ? "🚨 CASE ALREADY DISPATCHED" 
+                            : "🚨 CONFIRM DEPLOYMENT"}
                         </button>
                       )}
                     </div>

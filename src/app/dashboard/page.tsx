@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+
+import LiveDashboardMap from "@/components/dashboard/LiveDashboardMap";
+
 import Link from "next/link";
 
 // Define the shape of our data
@@ -11,7 +14,12 @@ interface SOSReport {
   description: string;
   status: string;
   created_at: string;
+
+  latitude: number | null; 
+  longitude: number | null;
+
   updated_at?: string; // Optional, used for response time math
+
 }
 
 export default function DashboardHome() {
@@ -147,10 +155,12 @@ export default function DashboardHome() {
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[500px]">
         
         {/* Left Side: Live Map Area (2/3 width) */}
-        <div className="lg:col-span-2 bg-[#13151a] rounded-2xl border border-neutral-800 shadow-xl p-6 flex flex-col">
-          <h2 className="text-xl font-bold text-white mb-4">Live Incident Map</h2>
-          <div className="flex-1 bg-neutral-900 rounded-xl flex items-center justify-center border-2 border-dashed border-neutral-700">
-            <span className="text-neutral-500 font-medium">[ Google Maps Component Goes Here ]</span>
+
+        <div className="lg:col-span-2 bg-[#13151a]  rounded-xl border border-neutral-800 shadow-sm p-6 flex flex-col">
+          <h2 className="text-lg font-bold text-white-800 mb-4">Live Incident Map</h2>
+          <div className="flex-1 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-black/60">
+            <LiveDashboardMap reports={reports} />
+
           </div>
         </div>
 
@@ -170,41 +180,47 @@ export default function DashboardHome() {
             ) : reports.length === 0 ? (
               <p className="text-sm text-neutral-500 text-center mt-10">No active emergencies.</p>
             ) : (
-              reports.map((report) => (
-                <div key={report.id} className="p-4 border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 transition-colors rounded-xl flex flex-col gap-2 shadow-sm">
-                  
-                  <div className="flex justify-between items-start mb-1">
-                    <span className={`text-xs font-bold px-2 py-1 rounded tracking-wide uppercase ${getBadgeColor(report.status)}`}>
-                      {report.status || "Pending"}
-                    </span>
-                    <span className="text-[11px] text-neutral-500 font-medium">
-                      {new Date(report.created_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-
-                  <p className="text-sm font-bold text-white mt-1 flex items-center gap-2">
-                    <span>📍</span> {report.location || "Location Unknown"}
-                  </p>
-
-                  <p className="text-sm text-neutral-400 leading-relaxed line-clamp-3">
-                    {report.description}
-                  </p>
-
-                  <div className="mt-3 flex gap-2">
-                    <button className="flex-1 bg-red-600/10 text-red-500 border border-red-900/50 text-xs font-bold py-2 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-500 transition-all">
-                      Dispatch Unit
-                    </button>
+              reports.map((report) => {
+                const isDispatched = report.status?.toLowerCase().includes("dispatched");
+                return (
+                  <div key={report.id} className="p-4 border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-900 transition-colors rounded-xl flex flex-col gap-2 shadow-sm">
                     
-                    <Link 
-                      href={`/dashboard/sos`} 
-                      className="px-4 py-2 flex items-center justify-center bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs font-bold rounded-lg hover:bg-neutral-700 transition-all"
-                    >
-                      Details
-                    </Link>
-                  </div>
+                    <div className="flex justify-between items-start mb-1">
+                      <span className={`text-xs font-bold px-2 py-1 rounded tracking-wide uppercase ${getBadgeColor(report.status)}`}>
+                        {report.status || "Pending"}
+                      </span>
+                      <span className="text-[11px] text-neutral-500 font-medium">
+                        {new Date(report.created_at).toLocaleTimeString()}
+                      </span>
+                    </div>
 
-                </div>
-              ))
+                    <p className="text-sm font-bold text-white mt-1 flex items-center gap-2">
+                      <span>📍</span> {report.location || "Location Unknown"}
+                    </p>
+
+                    <p className="text-sm text-neutral-400 leading-relaxed line-clamp-3">
+                      {report.description}
+                    </p>
+
+                    <div className="mt-3 flex gap-2">
+                      <Link 
+                        href={`/dashboard/dispatch?sosId=${report.id}`}
+                        className="flex-1 flex items-center justify-center bg-red-600/10 text-red-500 border border-red-900/50 text-xs font-bold py-2 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-500 transition-all text-center"
+                      >
+                        Dispatch Unit
+                      </Link>
+                      
+                      <Link 
+                        href={`/dashboard/sos?sosId=${report.id}`} 
+                        className="px-4 py-2 flex items-center justify-center bg-neutral-800 border border-neutral-700 text-neutral-300 text-xs font-bold rounded-lg hover:bg-neutral-700 transition-all text-center"
+                      >
+                        Details
+                      </Link>
+                    </div>
+
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
