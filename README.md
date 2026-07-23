@@ -5,7 +5,7 @@ An AI-assisted, real-time command-and-control platform designed to synchronize i
 ## 🏆 HackElite 3.0 - Phase 2 Submission Details
 
 ### 🎥 Demo Video
-**Video Submission Link:** [Insert your Unlisted YouTube Link Here]
+**Video Submission Link:** [https://youtu.be/QmwioDYmLaQ]
 
 ### 🚀 Deployment Details
 
