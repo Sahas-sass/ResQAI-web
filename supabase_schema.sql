@@ -16,6 +16,8 @@ create table public.responders (
     contact_number text not null,
     role text not null check (role in ('medical', 'fire', 'police', 'military')),
     status text not null check (status in ('available', 'busy')) default 'available',
+    latitude double precision,
+    longitude double precision,
     created_at timestamptz default now()
 );
 
@@ -130,10 +132,10 @@ end;
 $$;
 
 -- 7. Insert sample seed data for testing role-based responders
-insert into public.responders (name, contact_number, role, status) values
-('Dr. Sumith Bandara', '+94 77 123 4567', 'medical', 'available'),
-('Nuwan Perera (Fire Crew 01)', '+94 71 987 6543', 'fire', 'available'),
-('Sgt. Jayasinghe (Patrol 04)', '+94 75 555 4433', 'police', 'available'),
-('Major General Fonseka', '+94 77 888 9900', 'military', 'available'),
-('Officer Karunaratne (Patrol 02)', '+94 76 111 2233', 'police', 'busy'),
-('Kamal Gunawardena (Fire Crew 02)', '+94 72 222 3344', 'fire', 'busy');
+insert into public.responders (name, contact_number, role, status, latitude, longitude) values
+('Dr. Sumith Bandara', '+94 77 123 4567', 'medical', 'available', 6.9271, 79.8612),
+('Nuwan Perera (Fire Crew 01)', '+94 71 987 6543', 'fire', 'available', 7.2906, 80.6337),
+('Sgt. Jayasinghe (Patrol 04)', '+94 75 555 4433', 'police', 'available', 6.9319, 79.8478),
+('Major General Fonseka', '+94 77 888 9900', 'military', 'available', 6.9016, 79.8549),
+('Officer Karunaratne (Patrol 02)', '+94 76 111 2233', 'police', 'busy', 7.2955, 80.6367),
+('Kamal Gunawardena (Fire Crew 02)', '+94 72 222 3344', 'fire', 'busy', 6.9147, 79.8778);

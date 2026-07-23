@@ -20,6 +20,7 @@ export default function IncomingSOS() {
   const [reports, setReports] = useState<SOSReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -103,10 +104,27 @@ export default function IncomingSOS() {
 
 }, []);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const queryParams = new URLSearchParams(window.location.search);
+      const urlSosId = queryParams.get("sosId");
+      if (urlSosId) {
+        setHighlightedId(urlSosId);
+        const timer = setTimeout(() => {
+          const element = document.getElementById(`sos-${urlSosId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [reports]);
+
 
 
     return (
-    <div className="w-full h-full">
+    <div className="w-full px-6">
 
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -144,22 +162,26 @@ export default function IncomingSOS() {
 
 
 
-      <div className="space-y-5">
+      <div className="space-y-4 px-4">
 
-        {reports.map((report)=>(
+        {reports.map((report) => (
 
           <div
             key={report.id}
-            className="
+            id={`sos-${report.id}`}
+            className={`
               bg-neutral-950/80
               backdrop-blur-xl
-              border border-neutral-800
+              border
               rounded-2xl
               p-6
               shadow-lg
-              hover:border-red-900
-              transition
-            "
+              transition-all
+              duration-500
+              ${highlightedId === report.id
+                ? "border-red-500/85 shadow-[0_0_20px_rgba(239,68,68,0.25)]"
+                : "border-neutral-800 hover:border-red-900"}
+            `}
           >
 
             {/* Header */}
